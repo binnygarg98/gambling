@@ -135,8 +135,8 @@ LIMIT 1;
         let minPrize = couponData.min_prize_amount;
         let maxPrize = couponData.max_prize_amount;
         // let prizeAmount = Math.floor(Math.random() * (maxPrize - minPrize + 1)) + minPrize;
-        let prizeAmount = couponData.max_prize_amount;
-       
+        let prizeAmount = parseFloat((couponData.max_prize_amount - (couponData.max_prize_amount * 0.18)).toFixed(2)); // 18% tax on max prize amount, rounded to 2 decimal places
+        
         let userWallet = await UserWallet.findOne({ where: { user_id: userId }, transaction: t });
         if (!userWallet) {
             await t.rollback();
