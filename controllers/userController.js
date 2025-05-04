@@ -453,7 +453,7 @@ async function addWalletTopup(req, res) {
 
 async function getUserTransactions(req, res, next) {
     // const customerUserId = req.params.userId;
-    let { page = 1, limit = 10, purpose = 'wallet_topup' } = req.query; // Default to page 1 and limit 10 if not provided
+    let { page = 1, limit = 10, purpose = 'wallet_topup' , status } = req.query; // Default to page 1 and limit 10 if not provided
     const offset = (page - 1) * limit;
     if (typeof purpose === 'string') {
         purpose = purpose.split(',').map(p => p.trim());
@@ -461,21 +461,34 @@ async function getUserTransactions(req, res, next) {
     const user = req.user;
     let baseQuery = ``;
     let selectAttributes = ``;
+    let replacements = {};
+    
     if (user.role == 'admin') {
-        selectAttributes = `aw.id AS wallet_id,
+        selectAttributes = `
                 wt.id AS wallet_transaction_id,
                 wt.transaction_amount,
                 wt.type,
                 wt.status,
                 wt.transaction_purpose,
                 wt.created_at`;
-        baseQuery = `FROM admin_wallets aw
-        INNER JOIN wallet_transactions wt ON aw.id = wt.admin_wallets_id
-        WHERE wt.created_by_admin = :userId 
-        AND wt.transaction_purpose in (:purpose)
-        AND aw.deleted_at is null AND wt.deleted_at IS NULL`;
-    } else {
+        // baseQuery = `FROM admin_wallets aw
+        // INNER JOIN wallet_transactions wt ON aw.id = wt.admin_wallets_id
+        // WHERE wt.created_by_admin = :userId 
+        // AND wt.transaction_purpose in (:purpose)
+        // AND aw.deleted_at is null AND wt.deleted_at IS NULL`;
+        baseQuery = `FROM wallet_transactions wt
+        WHERE wt.transaction_purpose in (:purpose)
+        AND wt.deleted_at IS NULL`;
+        
+        replacements = { purpose };
 
+        if(status) {
+            baseQuery += ` AND wt.status = :status`;
+            replacements.status = status;
+        }
+
+        
+    } else {
         selectAttributes = `uw.id AS wallet_id,
         uw.avl_amount,
         wt.id AS wallet_transaction_id,
@@ -490,17 +503,23 @@ async function getUserTransactions(req, res, next) {
         WHERE uw.user_id = :userId 
         AND wt.transaction_purpose in (:purpose)
         AND uw.deleted_at IS NULL AND wt.deleted_at IS NULL`;
+
+        replacements = { userId: user.id, purpose: purpose }
+
+        if(status) {
+            baseQuery += ` AND wt.status = :status`;
+            replacements.status = status;
+        }
     }
 
     try {
-
 
         // Query to get the total count of transactions
         const totalCountResult = await sequelize.query(`
             SELECT COUNT(*) AS total
             ${baseQuery}
         `, {
-            replacements: { userId: user.id, purpose: purpose },
+            replacements: replacements,
             type: Sequelize.QueryTypes.SELECT
         });
 
@@ -530,7 +549,7 @@ async function getUserTransactions(req, res, next) {
             ORDER BY wt.created_at DESC
             LIMIT :limit OFFSET :offset
         `, {
-            replacements: { userId: user.id, purpose: purpose, limit: parseInt(limit), offset: parseInt(offset) },
+            replacements: { ...replacements, limit: parseInt(limit), offset: parseInt(offset)},
             type: Sequelize.QueryTypes.SELECT
         });
 
@@ -557,6 +576,7 @@ async function getUserTransactions(req, res, next) {
             }
         });
     } catch (error) {
+        console.log(error);
         return failureResp(res, "An error occurred while retrieving transactions.", 500);
     }
 }
