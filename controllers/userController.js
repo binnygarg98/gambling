@@ -1,4 +1,3 @@
-https://api.campainvestment.co/api/user/transactions?page=1&limit=10&purpose=wallet_topup,spin_reward,coupon_purchase,wallet_debit https://api.campainvestment.co/api/user/transactions?page=1&limit=10&purpose=wallet_topup,spin_reward,coupon_purchase,wallet_debit
 const UserModel = require('../models/user');
 const UserWallet = require('../models/userWallet');
 const AdminWallets = require('../models/adminWallets');
@@ -62,15 +61,7 @@ async function getUserProfile(req, res, next) {
 
     return successResp(res, "User profile data.", 200, userInfo);
 }
-    userInfo = {
-        user,
-        active_coupons: totalActiveCoupons,
-        balance: userWallet ? userWallet.avl_amount : 0
-    };
-
-    return successResp(res, "User profile data.", 200, userInfo);
-}
-
+   
 async function getUserBalance(req, res, next) {
 
     // Assuming you have a User model and a way to get the user's balance
