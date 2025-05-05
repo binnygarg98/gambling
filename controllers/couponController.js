@@ -5,6 +5,7 @@ const sequelize = require('../config/database');
 const { Sequelize, Op } = require('sequelize');
 const UserWallet = require('../models/userWallet');
 const WalletTransactionModel = require('../models/walletTransactions');
+
 const SpinModel = require('../models/spins'); // Ensure the Spin model is imported
 
 async function getCoupons(req, res, next) {
@@ -58,10 +59,21 @@ LIMIT 1;
         }
 
         UserAmount = await UserWallet.findOne({ where: { user_id: userId } });
+        let pendingDebitSum = 0;
+        if (UserAmount) {
+            pendingDebitSum = await WalletTransactionModel.sum('transaction_amount', {
+                where: {
+                    user_wallet_id: UserAmount.id,
+                    status: 'pending',
+                    transaction_purpose: 'wallet_debit'
+                }
+            });
+        }
         if(!UserAmount) {
             return failureResp(res, "User wallet not found", 404);
         }
-        if(UserAmount.avl_amount < CouponData.price) {
+        const availableAmount = (UserAmount.avl_amount || 0) - (pendingDebitSum || 0);
+        if (availableAmount < CouponData.price) {
             return failureResp(res, "Insufficient balance", 400);
         }
         let userCouponData = {
