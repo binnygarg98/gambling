@@ -162,9 +162,10 @@ LIMIT 1;
             where uc.deleted_at is null 
             and s.deleted_at is null
             and s.created_at between :startOfToday and :endOfToday
+            and uc.user_id = :userId
             LIMIT 1
             `, {
-                    replacements: { startOfToday,endOfToday },
+                    replacements: { startOfToday,endOfToday,userId },
                     type: Sequelize.QueryTypes.SELECT,
                     transaction: t
         });
