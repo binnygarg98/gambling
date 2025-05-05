@@ -154,19 +154,26 @@ LIMIT 1;
         startOfToday.setHours(0, 0, 0, 0);
         const endOfToday = new Date();
         endOfToday.setHours(23, 59, 59, 999);
-        let alreadySpinUpForToday = await SpinModel.findOne({
-            where: {
-                user_coupon_id: userCouponId,
-                created_at: {
-                    [Op.between]: [startOfToday, endOfToday],
-                },
-            },
-            transaction: t,
+
+        const alreadySpinUpForToday = await sequelize.query(`
+            select s.id from user_coupons uc inner join spins s on (
+                uc.id = s.user_coupon_id
+            ) 
+            where uc.deleted_at is null 
+            and s.deleted_at is null
+            and s.created_at between :startOfToday and :endOfToday
+            LIMIT 1
+            `, {
+                    replacements: { startOfToday,endOfToday },
+                    type: Sequelize.QueryTypes.SELECT,
+                    transaction: t
         });
-        if (alreadySpinUpForToday) {
+            
+        if (alreadySpinUpForToday && alreadySpinUpForToday.length > 0) {
             await t.rollback();
             return failureResp(res, "You have already spin today. Please come back tomorrow for your next spin..", 500);
         }
+
         let spinRecord = await SpinModel.create(spinData, { transaction: t });
         if (!spinRecord) {
             await t.rollback();
