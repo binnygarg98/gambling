@@ -263,28 +263,36 @@ async function getUserPurchasedCoupons(req, res, next) {
 
         const [coupons, total] = await Promise.all([
             sequelize.query(`
-                SELECT c.id, 
-                c.coupon_name, 
-                c.price, 
-                c.max_prize_amount as daily_reward,
-                uc.id as user_coupon_id, 
-                uc.created_at AS purchase_date,
-                IF(DATE_ADD(uc.created_at, INTERVAL c.spin_days DAY) < NOW(), 'expired', 'active') as coupon_status
-                ${baseQuery}
-                ORDER BY uc.created_at DESC
-                LIMIT :limit OFFSET :offset
+            SELECT c.id, 
+            c.coupon_name, 
+            c.price, 
+            c.max_prize_amount as daily_reward,
+            uc.id as user_coupon_id, 
+            c.spin_days,
+            c.spin_days * c.max_prize_amount as total_prize_amount,
+            NOT EXISTS (
+                SELECT 1 
+                FROM spins s 
+                WHERE s.user_coupon_id = uc.id 
+                  AND DATE(s.created_at) = CURDATE()
+            ) AS rotation_flag,
+            uc.created_at AS purchase_date,
+            IF(DATE_ADD(uc.created_at, INTERVAL c.spin_days DAY) < NOW(), 'expired', 'active') as coupon_status
+            ${baseQuery}
+            ORDER BY uc.created_at DESC
+            LIMIT :limit OFFSET :offset
             `, {
-                replacements: { userId, limit: parseInt(limit), offset: parseInt(offset) },
-                type: Sequelize.QueryTypes.SELECT,
-                transaction
+            replacements: { userId, limit: parseInt(limit), offset: parseInt(offset) },
+            type: Sequelize.QueryTypes.SELECT,
+            transaction
             }),
             sequelize.query(`
-                SELECT COUNT(*) as total
-                ${baseQuery}
+            SELECT COUNT(*) as total
+            ${baseQuery}
             `, {
-                replacements: { userId },
-                type: Sequelize.QueryTypes.SELECT,
-                transaction
+            replacements: { userId },
+            type: Sequelize.QueryTypes.SELECT,
+            transaction
             })
         ]);
 
