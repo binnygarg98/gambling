@@ -156,12 +156,13 @@ LIMIT 1;
         endOfToday.setHours(23, 59, 59, 999);
 
         const alreadySpinUpForToday = await sequelize.query(`
-            select s.id from user_coupons uc inner join spins s on (
+            select s.id as spinId, uc.user_id as userId, s.created_at as spinDateTime
+            from user_coupons uc inner join spins s on (
                 uc.id = s.user_coupon_id
             ) 
             where uc.deleted_at is null 
             and s.deleted_at is null
-            and s.created_at between :startOfToday and :endOfToday
+            and s.created_at >=  :startOfToday and s.created_at <= :endOfToday
             and uc.user_id = :userId
             LIMIT 1
             `, {
