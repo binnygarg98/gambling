@@ -147,7 +147,10 @@ async function withdrawUserBalance(req, res, next) {
         return failureResp(res, "User wallet not found.", 404);
     }
 
-    if (userWallet.avl_amount < amount) {
+    const userLientAmount = await UserService.getUserLienAmount(userWallet.id);
+   
+    const netAvlAmount = userWallet.avl_amount - userLientAmount;
+    if (netAvlAmount < amount) {
         return failureResp(res, "Insufficient balance.", 422);
     }
 
@@ -564,7 +567,7 @@ async function getUserTransactions(req, res, next) {
 
         let userLientAmount = 0;
         if(transactionsData[0]?.wallet_id) {
-            
+
             userLientAmount = await UserService.getUserLienAmount(transactionsData[0]?.wallet_id);
         }
 
