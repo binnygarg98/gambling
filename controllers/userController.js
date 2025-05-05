@@ -8,6 +8,7 @@ const sequelize = require('../config/database');
 const WalletTransactions = require('../models/walletTransactions');
 const saltRounds = parseInt(process.env.SALT_ROUNDS || '10', 10);
 const bcrypt = require('bcrypt');
+const UserService = require('../service/UserService');
 
 async function getUserProfile(req, res, next) {
 
@@ -470,7 +471,7 @@ async function getUserTransactions(req, res, next) {
     let baseQuery = ``;
     let selectAttributes = ``;
     let replacements = {};
-    
+
     if (user.role == 'admin') {
         selectAttributes = `
                 wt.id AS wallet_transaction_id,
@@ -561,9 +562,15 @@ async function getUserTransactions(req, res, next) {
             type: Sequelize.QueryTypes.SELECT
         });
 
+        let userLientAmount = 0;
+        if(transactionsData[0]?.wallet_id) {
+            
+            userLientAmount = await UserService.getUserLienAmount(transactionsData[0]?.wallet_id);
+        }
+
         const wallet = {
             id: transactionsData[0]?.wallet_id || null,
-            avl_amount: transactionsData[0]?.avl_amount || 0,
+            avl_amount: (transactionsData[0]?.avl_amount || 0) - userLientAmount,
             transactions: transactionsData.map(txn => ({
                 id: txn.wallet_transaction_id,
                 amount: txn.transaction_amount,
